@@ -13,7 +13,7 @@ import seaborn as sns
 from pathlib import Path
 
 # Directories
-RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_CNN\results"
+RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\results"
 COMPARISON_DIR = os.path.join(RESULTS_DIR, "comparison")
 
 os.makedirs(COMPARISON_DIR, exist_ok=True)
@@ -25,7 +25,9 @@ MODELS = {
     'Swin Transformer': 'swin_transformer',
     'Swin Multi-View': 'swin_transformer_multiview',
     'ResNet18': 'resnet18',
-    'ResNet50': 'resnet50'
+    'ResNet50': 'resnet50',
+    'EfficientNet-B0': 'efficientnet',
+    'U-Net': 'unet'
 }
 
 
@@ -134,10 +136,10 @@ def create_all_models_bar_chart(all_metrics, output_path):
     labels = [m.replace('_', ' ') for m in metrics_to_plot]
     
     model_names = list(all_metrics.keys())
-    colors = ['#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2']
+    colors = ['#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#17BECF', '#BCBD22']
     
     x = np.arange(len(labels))
-    width = 0.12
+    width = 0.10
     
     fig, ax = plt.subplots(figsize=(16, 8))
     
@@ -230,7 +232,7 @@ def create_roc_comparison(output_path):
     ax.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier', alpha=0.5)
     
     # Color palette for models
-    colors = ['#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2']
+    colors = ['#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#17BECF', '#BCBD22']
     color_idx = 0
     
     # Load and plot each model
@@ -268,7 +270,7 @@ def create_pr_comparison(output_path):
     fig, ax = plt.subplots(figsize=(10, 8))
     
     # Color palette for models
-    colors = ['#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2']
+    colors = ['#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#17BECF', '#BCBD22']
     color_idx = 0
     
     # Load and plot each model

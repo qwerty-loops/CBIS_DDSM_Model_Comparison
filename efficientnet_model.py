@@ -29,26 +29,37 @@ BATCH_SIZE = 16
 NUM_EPOCHS = 30
 LEARNING_RATE = 1e-4
 NUM_CLASSES = 2
-MODEL_NAME = "resnet50"
+MODEL_NAME = "efficientnet"
 OUTPUT_MODEL_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\models"
-OUTPUT_RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\results\resnet50"
+OUTPUT_RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\results\efficientnet"
 
 os.makedirs(OUTPUT_MODEL_DIR, exist_ok=True)
 os.makedirs(OUTPUT_RESULTS_DIR, exist_ok=True)
 
-class ResNet50Classifier(nn.Module):
-    """ResNet50 model for binary classification"""
+class EfficientNetClassifier(nn.Module):
+    """EfficientNet-B0 model for binary classification"""
     
     def __init__(self, num_classes=2, pretrained=True):
-        super(ResNet50Classifier, self).__init__()
+        super(EfficientNetClassifier, self).__init__()
         
-        # Load pretrained ResNet50
-        weights = models.ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
-        self.model = models.resnet50(weights=weights)
+        # Load EfficientNet-B0
+        if pretrained:
+            # Load model without pretrained weights first, then load manually
+            self.model = models.efficientnet_b0(weights=None)
+            # Load pretrained weights with hash check disabled
+            import torch.hub as hub
+            state_dict = hub.load_state_dict_from_url(
+                'https://download.pytorch.org/models/efficientnet_b0_rwightman-3dd342df.pth',
+                progress=True,
+                check_hash=False  # Disable hash checking to avoid mismatch
+            )
+            self.model.load_state_dict(state_dict)
+        else:
+            self.model = models.efficientnet_b0(weights=None)
         
-        # Modify final fully connected layer for binary classification
-        in_features = self.model.fc.in_features
-        self.model.fc = nn.Linear(in_features, num_classes)
+        # Modify final classifier layer for binary classification
+        in_features = self.model.classifier[1].in_features
+        self.model.classifier[1] = nn.Linear(in_features, num_classes)
         
     def forward(self, x):
         return self.model(x)
@@ -273,7 +284,7 @@ def main():
     )
     
     print(f"\nInitializing {MODEL_NAME} model...")
-    model = ResNet50Classifier(num_classes=NUM_CLASSES, pretrained=True).to(DEVICE)
+    model = EfficientNetClassifier(num_classes=NUM_CLASSES, pretrained=True).to(DEVICE)
     
     trainer = Trainer(model, DEVICE, train_loader, val_loader)
     trainer.train(NUM_EPOCHS)
@@ -307,4 +318,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

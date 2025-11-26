@@ -12,7 +12,6 @@ from sklearn.metrics import (
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.models as models
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import warnings
@@ -29,29 +28,113 @@ BATCH_SIZE = 16
 NUM_EPOCHS = 30
 LEARNING_RATE = 1e-4
 NUM_CLASSES = 2
-MODEL_NAME = "resnet50"
+MODEL_NAME = "unet"
 OUTPUT_MODEL_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\models"
-OUTPUT_RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\results\resnet50"
+OUTPUT_RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\results\unet"
 
 os.makedirs(OUTPUT_MODEL_DIR, exist_ok=True)
 os.makedirs(OUTPUT_RESULTS_DIR, exist_ok=True)
 
-class ResNet50Classifier(nn.Module):
-    """ResNet50 model for binary classification"""
+
+class DoubleConv(nn.Module):
+    """Double convolution block for U-Net"""
+    def __init__(self, in_channels, out_channels):
+        super(DoubleConv, self).__init__()
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
     
-    def __init__(self, num_classes=2, pretrained=True):
-        super(ResNet50Classifier, self).__init__()
-        
-        # Load pretrained ResNet50
-        weights = models.ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
-        self.model = models.resnet50(weights=weights)
-        
-        # Modify final fully connected layer for binary classification
-        in_features = self.model.fc.in_features
-        self.model.fc = nn.Linear(in_features, num_classes)
-        
     def forward(self, x):
-        return self.model(x)
+        return self.double_conv(x)
+
+
+class Down(nn.Module):
+    """Downscaling with maxpool then double conv"""
+    def __init__(self, in_channels, out_channels):
+        super(Down, self).__init__()
+        self.maxpool_conv = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_channels, out_channels)
+        )
+    
+    def forward(self, x):
+        return self.maxpool_conv(x)
+
+
+class Up(nn.Module):
+    """Upscaling then double conv"""
+    def __init__(self, in_channels, out_channels):
+        super(Up, self).__init__()
+        self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
+        self.conv = DoubleConv(in_channels, out_channels)
+    
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        # Concatenate skip connection
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+
+class UNetClassifier(nn.Module):
+    """U-Net architecture adapted for binary classification
+    
+    Traditional U-Net is for segmentation, but we adapt it for classification by:
+    1. Using the encoder path to extract hierarchical features
+    2. Using the decoder path to refine features
+    3. Adding global pooling and classification head at the end
+    """
+    
+    def __init__(self, num_classes=2, in_channels=3):
+        super(UNetClassifier, self).__init__()
+        
+        # Encoder (downsampling path)
+        self.inc = DoubleConv(in_channels, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
+        self.down4 = Down(512, 1024)
+        
+        # Decoder (upsampling path)
+        self.up1 = Up(1024, 512)
+        self.up2 = Up(512, 256)
+        self.up3 = Up(256, 128)
+        self.up4 = Up(128, 64)
+        
+        # Classification head
+        self.global_pool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Dropout(0.5),
+            nn.Linear(64, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(128, num_classes)
+        )
+    
+    def forward(self, x):
+        # Encoder
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+        
+        # Decoder with skip connections
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        
+        # Classification
+        x = self.global_pool(x)
+        x = self.classifier(x)
+        
+        return x
 
 
 class MetricsCalculator:
@@ -92,7 +175,7 @@ class Visualizer:
                    xticklabels=['Benign', 'Malignant'],
                    yticklabels=['Benign', 'Malignant'],
                    cbar_kws={'label': 'Count'})
-        plt.title(f'Confusion Matrix - {MODEL_NAME}', fontsize=14, fontweight='bold')
+        plt.title(f'Confusion Matrix - {MODEL_NAME.upper()}', fontsize=14, fontweight='bold')
         plt.ylabel('True Label', fontsize=12)
         plt.xlabel('Predicted Label', fontsize=12)
         plt.tight_layout()
@@ -111,7 +194,7 @@ class Visualizer:
         plt.ylim([0.0, 1.05])
         plt.xlabel('False Positive Rate', fontsize=12)
         plt.ylabel('True Positive Rate', fontsize=12)
-        plt.title(f'ROC Curve - {MODEL_NAME}', fontsize=14, fontweight='bold')
+        plt.title(f'ROC Curve - {MODEL_NAME.upper()}', fontsize=14, fontweight='bold')
         plt.legend(loc='lower right', fontsize=10)
         plt.grid(alpha=0.3)
         plt.tight_layout()
@@ -129,7 +212,7 @@ class Visualizer:
         plt.ylim([0.0, 1.05])
         plt.xlabel('Recall', fontsize=12)
         plt.ylabel('Precision', fontsize=12)
-        plt.title(f'Precision-Recall Curve - {MODEL_NAME}', fontsize=14, fontweight='bold')
+        plt.title(f'Precision-Recall Curve - {MODEL_NAME.upper()}', fontsize=14, fontweight='bold')
         plt.legend(loc='lower left', fontsize=10)
         plt.grid(alpha=0.3)
         plt.tight_layout()
@@ -220,7 +303,7 @@ class Trainer:
         return running_loss / total, correct / total
     
     def train(self, num_epochs):
-        print(f"\nStarting {MODEL_NAME} training")
+        print(f"\nStarting {MODEL_NAME.upper()} training")
         for epoch in range(num_epochs):
             print(f"\nEpoch {epoch+1}/{num_epochs}")
             train_loss, train_acc = self.train_epoch()
@@ -265,15 +348,22 @@ def save_metrics_to_csv(metrics, output_path):
 
 
 def main():
-    print(f"\n{MODEL_NAME} Model Training")
+    print(f"\n{MODEL_NAME.upper()} Model Training")
     print("-" * 40)
     
     train_loader, val_loader, test_loader = create_data_loaders(
         OUTPUT_DIR, batch_size=BATCH_SIZE, image_size=IMAGE_SIZE, num_workers=0
     )
     
-    print(f"\nInitializing {MODEL_NAME} model...")
-    model = ResNet50Classifier(num_classes=NUM_CLASSES, pretrained=True).to(DEVICE)
+    print(f"\nInitializing {MODEL_NAME.upper()} model...")
+    print("Note: U-Net is adapted for classification with encoder-decoder + global pooling")
+    model = UNetClassifier(num_classes=NUM_CLASSES, in_channels=3).to(DEVICE)
+    
+    # Print model parameter count
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,}")
     
     trainer = Trainer(model, DEVICE, train_loader, val_loader)
     trainer.train(NUM_EPOCHS)
@@ -307,4 +397,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
