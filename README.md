@@ -267,7 +267,7 @@ Output:
 
 ```bash
 python swin_transformer_multiview_model.py
-``;
+```
 
 Main points:
 
