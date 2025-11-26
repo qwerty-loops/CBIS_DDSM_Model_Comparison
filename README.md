@@ -474,19 +474,6 @@ Before running the models, ensure:
 - [ ] GPU available (optional but recommended)
 - [ ] Preprocessing script has been run successfully
 
----
-
-## 📧 Support
-
-For issues or questions:
-1. Check the Troubleshooting section
-2. Verify all requirements are installed correctly
-3. Ensure preprocessing was completed successfully
-4. Check console output for specific error messages
-
----
-
-**Last Updated:** November 2024
 
 **Project:** CBIS-DDSM Breast Cancer Classification  
 **Models:** ConvNeXt-Tiny, DenseNet121, ResNet18, ResNet50, Swin Transformer (single/multi-view)  
