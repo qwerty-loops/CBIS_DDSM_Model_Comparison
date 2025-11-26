@@ -37,8 +37,8 @@ LEARNING_RATE = 1e-4
 NUM_CLASSES = 2
 MODEL_NAME = "resnet18"
 # Update these paths as needed
-OUTPUT_MODEL_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_CNN\models"
-OUTPUT_RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_CNN\results\resnet18"
+OUTPUT_MODEL_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\models"
+OUTPUT_RESULTS_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\results\resnet18"
 
 os.makedirs(OUTPUT_MODEL_DIR, exist_ok=True)
 os.makedirs(OUTPUT_RESULTS_DIR, exist_ok=True)

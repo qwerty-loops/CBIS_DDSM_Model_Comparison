@@ -25,7 +25,7 @@ The code handles data preprocessing, training, evaluation, visualization, and mo
 
 ## Overview
 
-The project currently supports six models:
+The project currently supports eight models:
 
 1. ConvNeXt-Tiny
 2. DenseNet121
@@ -33,6 +33,8 @@ The project currently supports six models:
 4. ResNet50
 5. Swin Transformer (single-view)
 6. Swin Transformer (multi-view variant)
+7. EfficientNet-B0
+8. U-Net (adapted for classification)
 
 All models share the same preprocessing pipeline, training loop style, metrics, and output structure. A separate comparison script summarizes and visualizes how they perform side by side.
 
@@ -81,6 +83,8 @@ CBIS_DDSM_CNN/
 ├── resnet50_model.py              # ResNet50 model
 ├── swin_transformer_model.py      # Swin Transformer (single-view)
 ├── swin_transformer_multiview_model.py  # Swin Transformer (multi-view)
+├── efficientnet_model.py          # EfficientNet-B0 model
+├── unet_model.py                  # U-Net model (adapted for classification)
 ├── compare_models.py              # Model comparison and plots
 ├── README.md                      # Main documentation (this file)
 │
@@ -96,7 +100,9 @@ CBIS_DDSM_CNN/
 │   ├── resnet18_best.pth
 │   ├── resnet50_best.pth
 │   ├── swin_transformer_best.pth
-│   └── swin_transformer_multiview_best.pth
+│   ├── swin_transformer_multiview_best.pth
+│   ├── efficientnet_best.pth
+│   └── unet_best.pth
 │
 └── results/                       # Evaluation results (created automatically)
     ├── convnext/
@@ -105,6 +111,8 @@ CBIS_DDSM_CNN/
     ├── resnet50/
     ├── swin_transformer/
     ├── swin_transformer_multiview/
+    ├── efficientnet/
+    ├── unet/
     └── comparison/                # Cross-model comparison tables and plots
 ```
 
@@ -142,6 +150,8 @@ Classes:
    python resnet50_model.py
    python swin_transformer_model.py
    python swin_transformer_multiview_model.py
+   python efficientnet_model.py
+   python unet_model.py
    ```
 3. Run the comparison script:
    ```bash
@@ -279,6 +289,41 @@ Output:
 - `models/swin_transformer_multiview_best.pth`
 - `results/swin_transformer_multiview/`
 
+#### EfficientNet-B0
+
+```bash
+python efficientnet_model.py
+```
+
+Main points:
+
+- Backbone: EfficientNet-B0 (ImageNet pretrained)
+- Compound scaling method balancing network depth, width, and resolution
+- Efficient architecture with excellent accuracy-to-parameter ratio
+
+Output:
+
+- `models/efficientnet_best.pth`
+- `results/efficientnet/`
+
+#### U-Net (Classification)
+
+```bash
+python unet_model.py
+```
+
+Main points:
+
+- Traditional U-Net architecture adapted for classification
+- Encoder-decoder structure with skip connections
+- Global pooling + classification head for binary classification
+- No pretrained weights (trained from scratch)
+
+Output:
+
+- `models/unet_best.pth`
+- `results/unet/`
+
 ---
 
 ## Models
@@ -290,6 +335,8 @@ Short description of each model:
 - **ResNet18 / ResNet50** – Classic residual networks; stable and widely used baselines.
 - **Swin Transformer (single-view)** – Vision Transformer with shifted windows, good at capturing both local and global patterns.
 - **Swin Transformer (multi-view)** – Variant intended for combining information from multiple views; currently run on single views but keeps the design flexible.
+- **EfficientNet-B0** – Efficient architecture using compound scaling; balances depth, width, and resolution for optimal performance.
+- **U-Net** – Encoder-decoder architecture with skip connections, adapted from segmentation to classification; trained from scratch.
 
 ---
 
@@ -451,6 +498,10 @@ train_transform = transforms.Compose([
 
 3. **DenseNet Paper:** Huang, G., et al. (2017). "Densely Connected Convolutional Networks." CVPR 2017.
 
+4. **EfficientNet Paper:** Tan, M., & Le, Q. (2019). "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks." ICML 2019.
+
+5. **U-Net Paper:** Ronneberger, O., et al. (2015). "U-Net: Convolutional Networks for Biomedical Image Segmentation." MICCAI 2015.
+
 ---
 
 ## 📝 Notes
@@ -459,7 +510,7 @@ train_transform = transforms.Compose([
 - Models are saved only when validation loss improves
 - All metrics are computed on the test set using the best model checkpoint
 - Preprocessing needs to be run only once unless data changes
-- Both models use transfer learning with ImageNet pretrained weights
+- Most models use transfer learning with ImageNet pretrained weights (except U-Net which trains from scratch)
 
 ---
 
@@ -476,5 +527,5 @@ Before running the models, ensure:
 
 
 **Project:** CBIS-DDSM Breast Cancer Classification  
-**Models:** ConvNeXt-Tiny, DenseNet121, ResNet18, ResNet50, Swin Transformer (single/multi-view)  
+**Models:** ConvNeXt-Tiny, DenseNet121, ResNet18, ResNet50, Swin Transformer (single/multi-view), EfficientNet-B0, U-Net  
 **Task:** Binary classification (Benign vs Malignant)

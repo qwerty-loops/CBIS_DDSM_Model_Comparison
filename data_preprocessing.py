@@ -24,7 +24,7 @@ JPEG_DIR = os.path.join(BASE, "jpeg")
 PNG_DIR = os.path.join(BASE, "png")
 
 # Output directory for preprocessed data
-OUTPUT_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_CNN\preprocessed_data"
+OUTPUT_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\preprocessed_data"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
