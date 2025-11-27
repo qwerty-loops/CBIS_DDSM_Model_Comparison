@@ -1,0 +1,4 @@
+# Ignore huge image folders
+Images/jpeg/
+Images/png/
+Images/csv/
