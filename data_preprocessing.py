@@ -17,14 +17,15 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
-# Dataset paths
-BASE = r"D:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM"
+# Dataset paths - Using relative paths for portability
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.join(SCRIPT_DIR, "Images")
 CSV_DIR = os.path.join(BASE, "csv")
 JPEG_DIR = os.path.join(BASE, "jpeg")
 PNG_DIR = os.path.join(BASE, "png")
 
 # Output directory for preprocessed data
-OUTPUT_DIR = r"d:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM_Model_Comparison\preprocessed_data"
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "preprocessed_data")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
@@ -50,9 +51,45 @@ class DataPreprocessor:
         self.val_df = pd.read_csv(val_path)
         self.test_df = pd.read_csv(test_path)
         
+        # Fix paths to match current location
+        print("Updating image paths...")
+        self._fix_image_paths(self.train_df)
+        self._fix_image_paths(self.val_df)
+        self._fix_image_paths(self.test_df)
+        
         print(f"Train: {len(self.train_df)} | Val: {len(self.val_df)} | Test: {len(self.test_df)}")
         
         return self.train_df, self.val_df, self.test_df
+    
+    def _fix_image_paths(self, df):
+        """Update image paths to match current directory structure"""
+        def update_path(row):
+            old_path = row['jpg_path']
+            if pd.isna(old_path): return old_path
+            
+            # Get filename from old path
+            filename = os.path.basename(old_path)
+            
+            # Get SeriesInstanceUID if available to construct path
+            uid = row.get('SeriesInstanceUID', '')
+            if not uid and 'jpeg' in str(old_path):
+                # Try to extract UID from path if not in column
+                # Path structure: .../jpeg/UID/filename
+                parts = str(old_path).replace('\\', '/').split('/')
+                try:
+                    idx = parts.index('jpeg')
+                    uid = parts[idx+1]
+                except (ValueError, IndexError):
+                    pass
+            
+            if uid:
+                # Construct new path: BASE/jpeg/UID/filename
+                new_path = os.path.join(self.base_dir, "jpeg", str(uid), filename)
+                return new_path
+            return old_path
+
+        if 'jpg_path' in df.columns:
+            df['jpg_path'] = df.apply(update_path, axis=1)
     
     def check_missing_values(self, df, split_name):
         """Check for missing values in dataset"""
