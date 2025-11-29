@@ -1,14 +1,13 @@
-CBIS-DDSM Data Preprocessing Summary
-============================================================
+CBIS-DDSM Preprocessing Summary
 
 Dataset: CBIS-DDSM Breast Cancer Mammography
-Total Samples: 110
-Train Samples: 77
-Val Samples: 15
-Test Samples: 18
-Train Class0: 58
-Train Class1: 19
-Val Class0: 12
-Val Class1: 3
-Test Class0: 13
-Test Class1: 5
+Total Samples: 2967
+Train Samples: 2091
+Val Samples: 435
+Test Samples: 441
+Train Class0: 1184
+Train Class1: 907
+Val Class0: 246
+Val Class1: 189
+Test Class0: 242
+Test Class1: 199
