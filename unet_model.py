@@ -252,7 +252,7 @@ class Trainer:
         self.criterion = nn.CrossEntropyLoss(weight=class_weights)
         self.optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode='min', patience=5, factor=0.5, verbose=True
+            self.optimizer, mode='min', patience=5, factor=0.5
         )
         self.train_losses = []; self.val_losses = []
         self.train_accs = []; self.val_accs = []

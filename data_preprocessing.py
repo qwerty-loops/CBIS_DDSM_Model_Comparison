@@ -39,10 +39,36 @@ class DataPreprocessor:
         self.val_df = None
         self.test_df = None
         
-    def load_data(self):
-        """Load train, validation, and test CSV files"""
+    def load_data(self, use_enhanced=True):
+        """Load train, validation, and test CSV files
+        
+        Args:
+            use_enhanced: If True, tries to load enhanced dataset (3000+ images)
+                         If False or enhanced not found, uses original dataset (110 images)
+        """
         print("\nLoading data...")
         
+        # Try to use enhanced dataset first
+        # Get the script directory (CBIS_DDSM_Model_Comparison)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        enhanced_dir = os.path.join(script_dir, "preprocessed_data_enhanced")
+        
+        if use_enhanced and os.path.exists(enhanced_dir):
+            train_path = os.path.join(enhanced_dir, "train_enhanced.csv")
+            val_path = os.path.join(enhanced_dir, "val_enhanced.csv")
+            test_path = os.path.join(enhanced_dir, "test_enhanced.csv")
+            
+            if all(os.path.exists(p) for p in [train_path, val_path, test_path]):
+                print("  ✓ Using ENHANCED dataset (3000+ images)")
+                self.train_df = pd.read_csv(train_path)
+                self.val_df = pd.read_csv(val_path)
+                self.test_df = pd.read_csv(test_path)
+                
+                print(f"  Train: {len(self.train_df)} | Val: {len(self.val_df)} | Test: {len(self.test_df)}")
+                return self.train_df, self.val_df, self.test_df
+        
+        # Fallback to original dataset
+        print("  ⚠ Using ORIGINAL dataset (110 images)")
         train_path = os.path.join(self.base_dir, "split_train.csv")
         val_path = os.path.join(self.base_dir, "split_val.csv")
         test_path = os.path.join(self.base_dir, "split_test.csv")
@@ -52,12 +78,12 @@ class DataPreprocessor:
         self.test_df = pd.read_csv(test_path)
         
         # Fix paths to match current location
-        print("Updating image paths...")
+        print("  Updating image paths...")
         self._fix_image_paths(self.train_df)
         self._fix_image_paths(self.val_df)
         self._fix_image_paths(self.test_df)
         
-        print(f"Train: {len(self.train_df)} | Val: {len(self.val_df)} | Test: {len(self.test_df)}")
+        print(f"  Train: {len(self.train_df)} | Val: {len(self.val_df)} | Test: {len(self.test_df)}")
         
         return self.train_df, self.val_df, self.test_df
     

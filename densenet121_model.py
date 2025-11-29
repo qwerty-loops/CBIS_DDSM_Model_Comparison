@@ -31,7 +31,7 @@ from data_preprocessing import create_data_loaders, OUTPUT_DIR
 # Configuration
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 IMAGE_SIZE = 224
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 NUM_EPOCHS = 30
 LEARNING_RATE = 1e-4
 NUM_CLASSES = 2
@@ -200,7 +200,7 @@ class Trainer:
         self.criterion = nn.CrossEntropyLoss(weight=class_weights)
         self.optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode='min', patience=5, factor=0.5, verbose=True
+            self.optimizer, mode='min', patience=5, factor=0.5
         )
         
         self.train_losses = []
@@ -374,7 +374,7 @@ def main():
         OUTPUT_DIR,
         batch_size=BATCH_SIZE,
         image_size=IMAGE_SIZE,
-        num_workers=0  # Windows compatibility
+        num_workers=4  # Parallel data loading for faster training
     )
     
     # Initialize model
