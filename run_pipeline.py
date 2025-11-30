@@ -6,13 +6,16 @@ import os
 # List of scripts to run in order
 # Each tuple is (Description, Script Filename)
 STEPS = [
-    ("Preprocessing", "data_preprocessing.py"),
-    ("ConvNeXt Training", "convnext_model.py"),
-    ("DenseNet121 Training", "densenet121_model.py"),
-    ("ResNet18 Training", "resnet18_model.py"),
-    ("ResNet50 Training", "resnet50_model.py"),
-    ("Swin Transformer Training", "swin_transformer_model.py"),
-    ("Swin Multi-View Training", "swin_transformer_multiview_model.py"),
+    # ("Preprocessing", "data_preprocessing.py"),
+    # ("ConvNeXt Training", "convnext_model.py"),
+    # ("DenseNet121 Training", "densenet121_model.py"),
+    # ("ResNet18 Training", "resnet18_model.py"),
+    # ("ResNet50 Training", "resnet50_model.py"),
+    # ("Swin Transformer Training", "swin_transformer_model.py"),
+    # ("Swin Multi-View Training", "swin_transformer_multiview_model.py"),
+    ("EfficientNet-B0 Training", "efficientnet_model.py"),
+    ("U-Net Training", "unet_model.py"),
+    ("Custom CNN Training", "custom_cnn_model.py"),
     ("Model Comparison", "compare_models.py")
 ]
 
