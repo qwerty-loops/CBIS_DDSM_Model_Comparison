@@ -3,6 +3,11 @@ CBIS-DDSM Data Preprocessing
 
 Loads, cleans, and prepares the CBIS-DDSM mammography dataset.
 Creates cleaned CSV files and PyTorch DataLoaders for model training.
+
+Features:
+- Standard preprocessing: Uses existing split files (110 images)
+- Enhanced preprocessing: Processes full CBIS-DDSM dataset (3000+ images)
+  by matching all JPEG images with annotations from CSV files
 """
 
 import os
@@ -14,6 +19,9 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import matplotlib.pyplot as plt
 from pathlib import Path
+import re
+import glob
+from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -26,7 +34,15 @@ PNG_DIR = os.path.join(BASE, "png")
 
 # Output directory for preprocessed data
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "preprocessed_data")
+OUTPUT_DIR_ENHANCED = os.path.join(SCRIPT_DIR, "preprocessed_data_enhanced")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR_ENHANCED, exist_ok=True)
+
+# Enhanced dataset paths (for 3000+ images)
+PARENT_DIR = os.path.dirname(SCRIPT_DIR)
+BASE_ENHANCED = os.path.join(PARENT_DIR, "CBIS_DDSM")
+CSV_DIR_ENHANCED = os.path.join(BASE_ENHANCED, "csv")
+JPEG_DIR_ENHANCED = os.path.join(BASE_ENHANCED, "jpeg")
 
 
 class DataPreprocessor:
@@ -257,6 +273,168 @@ class DataPreprocessor:
         return report
 
 
+class EnhancedDataPreprocessor:
+    """Enhanced preprocessing to create dataset with 3000+ images instead of 110"""
+    
+    @staticmethod
+    def norm_key(s):
+        """Normalize for matching"""
+        s = str(s).strip().replace("–","-").replace("—","-")
+        return re.sub(r'\s+','', re.sub(r'[_-]+', lambda m: m.group()[0], s)).upper()
+    
+    @staticmethod
+    def load_and_match():
+        """Load all CBIS-DDSM data and match images with labels"""
+        print("\n" + "="*70)
+        print("LOADING CBIS-DDSM DATA (ENHANCED MODE)")
+        print("="*70)
+        
+        # Load annotations
+        ann_files = {
+            "calc_train": "calc_case_description_train_set.csv",
+            "calc_test": "calc_case_description_test_set.csv",
+            "mass_train": "mass_case_description_train_set.csv",
+            "mass_test": "mass_case_description_test_set.csv",
+        }
+        
+        dfs = []
+        for name, fname in ann_files.items():
+            df = pd.read_csv(os.path.join(CSV_DIR_ENHANCED, fname))
+            dfs.append(df)
+            print(f"  ✓ {name}: {len(df)} annotations")
+        
+        ann = pd.concat(dfs, ignore_index=True)
+        
+        # Rename columns
+        ann = ann.rename(columns={
+            "image file path": "image_file_path",
+            "cropped image file path": "cropped_image_file_path",
+        })
+        
+        # Create labels
+        patho_map = {"MALIGNANT":1, "BENIGN":0, "BENIGN_WITHOUT_CALLBACK":0}
+        ann["label"] = ann["pathology"].astype(str).str.upper().map(patho_map)
+        
+        # Extract series keys
+        ann["full_key"] = ann["image_file_path"].apply(lambda s: str(s).split("/")[0] if "/" in str(s) else "").apply(EnhancedDataPreprocessor.norm_key)
+        ann["crop_key"] = ann["cropped_image_file_path"].apply(lambda s: str(s).split("/")[0] if "/" in str(s) else "").apply(EnhancedDataPreprocessor.norm_key)
+        
+        print(f"\nTotal annotations: {len(ann)}")
+        
+        # Scan JPEG directory
+        print("\nScanning JPEG files...")
+        rows = []
+        for sid in os.listdir(JPEG_DIR_ENHANCED):
+            sdir = os.path.join(JPEG_DIR_ENHANCED, sid)
+            if os.path.isdir(sdir):
+                for jp in glob.glob(os.path.join(sdir, "*.jpg")):
+                    rows.append({"SeriesInstanceUID": sid, "jpg_path": jp})
+        
+        jpeg_df = pd.DataFrame(rows)
+        print(f"Found {len(jpeg_df)} JPEG files")
+        
+        # Load metadata
+        meta = pd.read_csv(os.path.join(CSV_DIR_ENHANCED, "meta.csv"))
+        dinfo = pd.read_csv(os.path.join(CSV_DIR_ENHANCED, "dicom_info.csv"))
+        
+        # Merge metadata
+        meta["SeriesInstanceUID"] = meta["SeriesInstanceUID"].astype(str)
+        jpeg_df = jpeg_df.merge(meta[["SeriesInstanceUID","SeriesDescription"]], on="SeriesInstanceUID", how="left")
+        
+        if "PatientID" in dinfo.columns:
+            dinfo_clean = dinfo[["SeriesInstanceUID", "PatientID"]].drop_duplicates()
+            jpeg_df = jpeg_df.merge(dinfo_clean, on="SeriesInstanceUID", how="left")
+        
+        jpeg_df["pid_norm"] = jpeg_df["PatientID"].astype(str).apply(EnhancedDataPreprocessor.norm_key)
+        
+        print("\nImage types:")
+        for t, c in jpeg_df["SeriesDescription"].value_counts().items():
+            print(f"  {t}: {c}")
+        
+        # Match images
+        print("\nMatching images with labels...")
+        
+        # Full mammograms
+        full_imgs = jpeg_df[jpeg_df["SeriesDescription"]=="full mammogram images"].copy()
+        ann_full = ann[["full_key", "label"]].dropna().drop_duplicates()
+        full_matched = full_imgs.merge(ann_full, left_on="pid_norm", right_on="full_key", how="inner")
+        print(f"  ✓ Full mammograms: {len(full_matched)}")
+        
+        # Cropped images
+        crop_imgs = jpeg_df[jpeg_df["SeriesDescription"]=="cropped images"].copy()
+        ann_crop = ann[["crop_key", "label"]].dropna().drop_duplicates()
+        crop_matched = crop_imgs.merge(ann_crop, left_on="pid_norm", right_on="crop_key", how="inner")
+        print(f"  ✓ Cropped images: {len(crop_matched)}")
+        
+        # Combine
+        combined = pd.concat([full_matched, crop_matched], ignore_index=True)
+        combined = combined.drop_duplicates(subset=['jpg_path'])
+        
+        print("\n" + "="*70)
+        print(f"COMBINED: {len(combined)} IMAGES")
+        print("="*70)
+        print(f"Benign: {(combined['label']==0).sum()}, Malignant: {(combined['label']==1).sum()}")
+        
+        return combined
+    
+    @staticmethod
+    def create_splits(df):
+        """Create patient-level train/val/test splits"""
+        print("\nCreating patient-level splits...")
+        
+        # Extract patient ID
+        df["patient"] = df["PatientID"].str.extract(r'(P_\d{5})')[0].fillna(df["PatientID"])
+        
+        # Patient-level split
+        patients = df.groupby("patient")["label"].max().reset_index()
+        
+        train_ids, tmp_ids = train_test_split(
+            patients["patient"], test_size=0.30, random_state=42,
+            stratify=patients["label"]
+        )
+        val_ids, test_ids = train_test_split(tmp_ids, test_size=0.5, random_state=42)
+        
+        train_df = df[df["patient"].isin(set(train_ids))]
+        val_df = df[df["patient"].isin(set(val_ids))]
+        test_df = df[df["patient"].isin(set(test_ids))]
+        
+        print(f"Train: {len(train_df)} images")
+        print(f"Val: {len(val_df)} images")
+        print(f"Test: {len(test_df)} images")
+        
+        return train_df, val_df, test_df
+    
+    @staticmethod
+    def run_enhanced_preprocessing():
+        """Run enhanced preprocessing to create 3000+ image dataset"""
+        print("\n" + "#"*70)
+        print("CBIS-DDSM ENHANCED PREPROCESSING")
+        print("#"*70)
+        
+        # Check if enhanced data directory exists
+        if not os.path.exists(CSV_DIR_ENHANCED) or not os.path.exists(JPEG_DIR_ENHANCED):
+            print(f"\nError: Enhanced dataset directory not found at {BASE_ENHANCED}")
+            print("Please ensure the full CBIS-DDSM dataset is available.")
+            return False
+        
+        # Load and match
+        combined = EnhancedDataPreprocessor.load_and_match()
+        
+        # Create splits
+        train, val, test = EnhancedDataPreprocessor.create_splits(combined)
+        
+        # Save
+        train.to_csv(os.path.join(OUTPUT_DIR_ENHANCED, "train_enhanced.csv"), index=False)
+        val.to_csv(os.path.join(OUTPUT_DIR_ENHANCED, "val_enhanced.csv"), index=False)
+        test.to_csv(os.path.join(OUTPUT_DIR_ENHANCED, "test_enhanced.csv"), index=False)
+        
+        print(f"\n✓ Saved to: {OUTPUT_DIR_ENHANCED}")
+        print(f"\nDATASET INCREASED FROM 110 TO {len(combined)} IMAGES!")
+        print("#"*70 + "\n")
+        
+        return True
+
+
 class CBISDDSMDataset(Dataset):
     """Custom PyTorch Dataset for CBIS-DDSM images"""
     
@@ -374,30 +552,25 @@ def main():
     print("\nCBIS-DDSM Data Preprocessing")
     print("-" * 40)
     
-    preprocessor = DataPreprocessor(BASE, OUTPUT_DIR)
+    # Run enhanced preprocessing by default (3000+ images)
+    print("\nRunning Enhanced Preprocessing (3000+ images)...")
+    print("="*70)
     
-    preprocessor.load_data()
+    success = EnhancedDataPreprocessor.run_enhanced_preprocessing()
     
-    preprocessor.clean_data()
+    if not success:
+        print("\nEnhanced preprocessing failed.")
+        print("Please ensure the full CBIS-DDSM dataset is available.")
+        return
     
-    preprocessor.save_cleaned_data()
-    
-    preprocessor.create_summary_report()
-    
-    print("\nTesting data loaders...")
-    train_loader, val_loader, test_loader = create_data_loaders(
-        OUTPUT_DIR,
-        batch_size=32,
-        image_size=224,
-        num_workers=0  # Use 0 for Windows compatibility
-    )
-    
-    images, labels = next(iter(train_loader))
-    print(f"Batch: {images.shape}, dtype: {images.dtype}")
-    print(f"Labels: {labels.shape}, dtype: {labels.dtype}")
-    
-    print("\nPreprocessing complete!")
-    print(f"Output: {OUTPUT_DIR}")
+    print("\n" + "="*70)
+    print("Preprocessing complete!")
+    print("="*70)
+    print(f"Output: {OUTPUT_DIR_ENHANCED}")
+    print(f"\nDataset files created:")
+    print(f"  - train_enhanced.csv")
+    print(f"  - val_enhanced.csv")
+    print(f"  - test_enhanced.csv")
 
 
 if __name__ == "__main__":
