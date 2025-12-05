@@ -24,6 +24,7 @@ MODELS = {
     'DenseNet121': 'densenet121',
     'Swin Transformer': 'swin_transformer',
     'Swin Multi-View': 'swin_transformer_multiview',
+    'SparseWin Transformer': 'sparsewin_transformer',
     'ResNet18': 'resnet18',
     'ResNet50': 'resnet50',
     'EfficientNet-B0': 'efficientnet',
