@@ -174,6 +174,8 @@ class Trainer:
         self.train_losses = []; self.val_losses = []
         self.train_accs = []; self.val_accs = []
         self.best_val_loss = float('inf')
+        self.early_stop_patience = 10
+        self.epochs_without_improvement = 0
     
     def _calculate_class_weights(self):
         print("\nCalculating class weights...")
@@ -236,6 +238,16 @@ class Trainer:
                 self.best_val_loss = val_loss
                 torch.save(self.model.state_dict(), os.path.join(OUTPUT_MODEL_DIR, f'{MODEL_NAME}_best.pth'))
                 print(f"Best model saved.")
+                self.epochs_without_improvement = 0
+            else:
+                self.epochs_without_improvement += 1
+                print(f"No improvement for {self.epochs_without_improvement} epoch(s)")
+            
+            # Early stopping
+            if self.epochs_without_improvement >= self.early_stop_patience:
+                print(f"\nEarly stopping triggered after {epoch+1} epochs")
+                print(f"No improvement for {self.early_stop_patience} consecutive epochs")
+                break
 
 
 class Evaluator:

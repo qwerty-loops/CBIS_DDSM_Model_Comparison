@@ -25,16 +25,14 @@ The code handles data preprocessing, training, evaluation, visualization, and mo
 
 ## Overview
 
-The project currently supports eight models:
+The project currently supports six models:
 
 1. ConvNeXt-Tiny
 2. DenseNet121
 3. ResNet18
 4. ResNet50
-5. Swin Transformer (single-view)
-6. Swin Transformer (multi-view variant)
-7. EfficientNet-B0
-8. U-Net (adapted for classification)
+5. Swin Transformer
+6. EfficientNet-B0
 
 All models share the same preprocessing pipeline, training loop style, metrics, and output structure. A separate comparison script summarizes and visualizes how they perform side by side.
 
@@ -81,8 +79,7 @@ CBIS_DDSM_CNN/
 ├── densenet121_model.py           # DenseNet121 model
 ├── resnet18_model.py              # ResNet18 model
 ├── resnet50_model.py              # ResNet50 model
-├── swin_transformer_model.py      # Swin Transformer (single-view)
-├── swin_transformer_multiview_model.py  # Swin Transformer (multi-view)
+├── swin_transformer_model.py      # Swin Transformer
 ├── efficientnet_model.py          # EfficientNet-B0 model
 ├── unet_model.py                  # U-Net model (adapted for classification)
 ├── compare_models.py              # Model comparison and plots
@@ -100,7 +97,6 @@ CBIS_DDSM_CNN/
 │   ├── resnet18_best.pth
 │   ├── resnet50_best.pth
 │   ├── swin_transformer_best.pth
-│   ├── swin_transformer_multiview_best.pth
 │   ├── efficientnet_best.pth
 │   └── unet_best.pth
 │
@@ -110,7 +106,6 @@ CBIS_DDSM_CNN/
     ├── resnet18/
     ├── resnet50/
     ├── swin_transformer/
-    ├── swin_transformer_multiview/
     ├── efficientnet/
     ├── unet/
     └── comparison/                # Cross-model comparison tables and plots
@@ -149,9 +144,7 @@ Classes:
    python resnet18_model.py
    python resnet50_model.py
    python swin_transformer_model.py
-   python swin_transformer_multiview_model.py
    python efficientnet_model.py
-   python unet_model.py
    ```
 3. Run the comparison script:
    ```bash
@@ -257,7 +250,7 @@ Output:
 - `models/resnet50_best.pth`
 - `results/resnet50/`
 
-#### Swin Transformer (single-view)
+#### Swin Transformer
 
 ```bash
 python swin_transformer_model.py
@@ -272,22 +265,6 @@ Output:
 
 - `models/swin_transformer_best.pth`
 - `results/swin_transformer/`
-
-#### Swin Transformer (multi-view)
-
-```bash
-python swin_transformer_multiview_model.py
-```
-
-Main points:
-
-- Designed to be extendable to multiple views per patient
-- Currently uses a similar backbone and training style as single-view
-
-Output:
-
-- `models/swin_transformer_multiview_best.pth`
-- `results/swin_transformer_multiview/`
 
 #### EfficientNet-B0
 
@@ -333,10 +310,8 @@ Short description of each model:
 - **ConvNeXt-Tiny** – Modern CNN architecture inspired by Vision Transformers, but purely convolutional.
 - **DenseNet121** – CNN with dense connections; good feature reuse and strong gradients.
 - **ResNet18 / ResNet50** – Classic residual networks; stable and widely used baselines.
-- **Swin Transformer (single-view)** – Vision Transformer with shifted windows, good at capturing both local and global patterns.
-- **Swin Transformer (multi-view)** – Variant intended for combining information from multiple views; currently run on single views but keeps the design flexible.
+- **Swin Transformer** – Vision Transformer with shifted windows, good at capturing both local and global patterns.
 - **EfficientNet-B0** – Efficient architecture using compound scaling; balances depth, width, and resolution for optimal performance.
-- **U-Net** – Encoder-decoder architecture with skip connections, adapted from segmentation to classification; trained from scratch.
 
 ---
 
@@ -527,5 +502,5 @@ Before running the models, ensure:
 
 
 **Project:** CBIS-DDSM Breast Cancer Classification  
-**Models:** ConvNeXt-Tiny, DenseNet121, ResNet18, ResNet50, Swin Transformer (single/multi-view), EfficientNet-B0, U-Net  
+**Models:** ConvNeXt-Tiny, DenseNet121, ResNet18, ResNet50, Swin Transformer, EfficientNet-B0  
 **Task:** Binary classification (Benign vs Malignant)

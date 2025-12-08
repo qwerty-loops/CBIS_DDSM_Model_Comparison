@@ -6,8 +6,9 @@ Creates cleaned CSV files and PyTorch DataLoaders for model training.
 
 Features:
 - Standard preprocessing: Uses existing split files (110 images)
-- Enhanced preprocessing: Processes full CBIS-DDSM dataset (3000+ images)
+- Enhanced preprocessing: Processes full CBIS-DDSM dataset (5000+ images)
   by matching all JPEG images with annotations from CSV files
+  Includes both MASS and CALCIFICATION cases
 """
 
 import os
@@ -22,23 +23,24 @@ from pathlib import Path
 import re
 import glob
 from sklearn.model_selection import train_test_split
+import cv2
 import warnings
 warnings.filterwarnings('ignore')
 
-# Dataset paths - Using relative paths for portability
+# Dataset paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.join(SCRIPT_DIR, "Images")
 CSV_DIR = os.path.join(BASE, "csv")
 JPEG_DIR = os.path.join(BASE, "jpeg")
 PNG_DIR = os.path.join(BASE, "png")
 
-# Output directory for preprocessed data
+# Output directories
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "preprocessed_data")
 OUTPUT_DIR_ENHANCED = os.path.join(SCRIPT_DIR, "preprocessed_data_enhanced")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR_ENHANCED, exist_ok=True)
 
-# Enhanced dataset paths (for 3000+ images)
+# Enhanced dataset paths
 PARENT_DIR = os.path.dirname(SCRIPT_DIR)
 BASE_ENHANCED = os.path.join(PARENT_DIR, "CBIS_DDSM")
 CSV_DIR_ENHANCED = os.path.join(BASE_ENHANCED, "csv")
@@ -75,7 +77,7 @@ class DataPreprocessor:
             test_path = os.path.join(enhanced_dir, "test_enhanced.csv")
             
             if all(os.path.exists(p) for p in [train_path, val_path, test_path]):
-                print("  ✓ Using ENHANCED dataset (3000+ images)")
+                print("  Using ENHANCED dataset (5000+ images)")
                 self.train_df = pd.read_csv(train_path)
                 self.val_df = pd.read_csv(val_path)
                 self.test_df = pd.read_csv(test_path)
@@ -83,8 +85,7 @@ class DataPreprocessor:
                 print(f"  Train: {len(self.train_df)} | Val: {len(self.val_df)} | Test: {len(self.test_df)}")
                 return self.train_df, self.val_df, self.test_df
         
-        # Fallback to original dataset
-        print("  ⚠ Using ORIGINAL dataset (110 images)")
+        print("  Using ORIGINAL dataset (110 images)")
         train_path = os.path.join(self.base_dir, "split_train.csv")
         val_path = os.path.join(self.base_dir, "split_val.csv")
         test_path = os.path.join(self.base_dir, "split_test.csv")
@@ -93,7 +94,6 @@ class DataPreprocessor:
         self.val_df = pd.read_csv(val_path)
         self.test_df = pd.read_csv(test_path)
         
-        # Fix paths to match current location
         print("  Updating image paths...")
         self._fix_image_paths(self.train_df)
         self._fix_image_paths(self.val_df)
@@ -109,14 +109,10 @@ class DataPreprocessor:
             old_path = row['jpg_path']
             if pd.isna(old_path): return old_path
             
-            # Get filename from old path
             filename = os.path.basename(old_path)
             
-            # Get SeriesInstanceUID if available to construct path
             uid = row.get('SeriesInstanceUID', '')
             if not uid and 'jpeg' in str(old_path):
-                # Try to extract UID from path if not in column
-                # Path structure: .../jpeg/UID/filename
                 parts = str(old_path).replace('\\', '/').split('/')
                 try:
                     idx = parts.index('jpeg')
@@ -125,7 +121,6 @@ class DataPreprocessor:
                     pass
             
             if uid:
-                # Construct new path: BASE/jpeg/UID/filename
                 new_path = os.path.join(self.base_dir, "jpeg", str(uid), filename)
                 return new_path
             return old_path
@@ -168,11 +163,10 @@ class DataPreprocessor:
             img_path = row['jpg_path']
             try:
                 img = Image.open(img_path)
-                img.verify()  # Verify image integrity
-                img = Image.open(img_path)  # Reopen after verify
+                img.verify()
+                img = Image.open(img_path)
                 img_array = np.array(img)
                 
-                # Check if image is not empty
                 if img_array.size == 0:
                     corrupt_images.append(img_path)
                     
@@ -213,24 +207,19 @@ class DataPreprocessor:
         """Perform comprehensive data cleaning"""
         print("\nStarting data cleaning...")
         
-        # Check missing values
         for df, name in [(self.train_df, 'Train'), (self.val_df, 'Validation'), (self.test_df, 'Test')]:
             self.check_missing_values(df, name)
         
-        # Verify image paths
         for df, name in [(self.train_df, 'Train'), (self.val_df, 'Validation'), (self.test_df, 'Test')]:
             self.verify_image_paths(df, name)
         
-        # Check image quality
         for df, name in [(self.train_df, 'Train'), (self.val_df, 'Validation'), (self.test_df, 'Test')]:
             self.check_image_quality(df, name)
         
-        # Remove duplicates
         self.train_df = self.remove_duplicates(self.train_df, 'Train')
         self.val_df = self.remove_duplicates(self.val_df, 'Validation')
         self.test_df = self.remove_duplicates(self.test_df, 'Test')
         
-        # Analyze class distribution
         self.analyze_class_distribution()
         
         print("\nData cleaning complete.")
@@ -274,7 +263,8 @@ class DataPreprocessor:
 
 
 class EnhancedDataPreprocessor:
-    """Enhanced preprocessing to create dataset with 3000+ images instead of 110"""
+    """Enhanced preprocessing to create dataset with 5000+ images instead of 110
+    Includes both MASS and CALCIFICATION cases"""
     
     @staticmethod
     def norm_key(s):
@@ -285,44 +275,37 @@ class EnhancedDataPreprocessor:
     @staticmethod
     def load_and_match():
         """Load all CBIS-DDSM data and match images with labels"""
-        print("\n" + "="*70)
-        print("LOADING CBIS-DDSM DATA (ENHANCED MODE)")
-        print("="*70)
+        print("\nLoading CBIS-DDSM data...")
         
-        # Load annotations
         ann_files = {
-            "calc_train": "calc_case_description_train_set.csv",
-            "calc_test": "calc_case_description_test_set.csv",
             "mass_train": "mass_case_description_train_set.csv",
             "mass_test": "mass_case_description_test_set.csv",
+            "calc_train": "calc_case_description_train_set.csv",
+            "calc_test": "calc_case_description_test_set.csv",
         }
         
         dfs = []
         for name, fname in ann_files.items():
             df = pd.read_csv(os.path.join(CSV_DIR_ENHANCED, fname))
             dfs.append(df)
-            print(f"  ✓ {name}: {len(df)} annotations")
+            print(f"  {name}: {len(df)} annotations")
         
         ann = pd.concat(dfs, ignore_index=True)
         
-        # Rename columns
         ann = ann.rename(columns={
             "image file path": "image_file_path",
             "cropped image file path": "cropped_image_file_path",
         })
         
-        # Create labels
         patho_map = {"MALIGNANT":1, "BENIGN":0, "BENIGN_WITHOUT_CALLBACK":0}
         ann["label"] = ann["pathology"].astype(str).str.upper().map(patho_map)
         
-        # Extract series keys
         ann["full_key"] = ann["image_file_path"].apply(lambda s: str(s).split("/")[0] if "/" in str(s) else "").apply(EnhancedDataPreprocessor.norm_key)
         ann["crop_key"] = ann["cropped_image_file_path"].apply(lambda s: str(s).split("/")[0] if "/" in str(s) else "").apply(EnhancedDataPreprocessor.norm_key)
         
         print(f"\nTotal annotations: {len(ann)}")
         
-        # Scan JPEG directory
-        print("\nScanning JPEG files...")
+        print("Scanning JPEG files...")
         rows = []
         for sid in os.listdir(JPEG_DIR_ENHANCED):
             sdir = os.path.join(JPEG_DIR_ENHANCED, sid)
@@ -333,11 +316,9 @@ class EnhancedDataPreprocessor:
         jpeg_df = pd.DataFrame(rows)
         print(f"Found {len(jpeg_df)} JPEG files")
         
-        # Load metadata
         meta = pd.read_csv(os.path.join(CSV_DIR_ENHANCED, "meta.csv"))
         dinfo = pd.read_csv(os.path.join(CSV_DIR_ENHANCED, "dicom_info.csv"))
         
-        # Merge metadata
         meta["SeriesInstanceUID"] = meta["SeriesInstanceUID"].astype(str)
         jpeg_df = jpeg_df.merge(meta[["SeriesInstanceUID","SeriesDescription"]], on="SeriesInstanceUID", how="left")
         
@@ -347,45 +328,30 @@ class EnhancedDataPreprocessor:
         
         jpeg_df["pid_norm"] = jpeg_df["PatientID"].astype(str).apply(EnhancedDataPreprocessor.norm_key)
         
-        print("\nImage types:")
+        print("Image types:")
         for t, c in jpeg_df["SeriesDescription"].value_counts().items():
             print(f"  {t}: {c}")
         
-        # Match images
-        print("\nMatching images with labels...")
+        print("Matching images with labels...")
         
-        # Full mammograms
         full_imgs = jpeg_df[jpeg_df["SeriesDescription"]=="full mammogram images"].copy()
         ann_full = ann[["full_key", "label"]].dropna().drop_duplicates()
         full_matched = full_imgs.merge(ann_full, left_on="pid_norm", right_on="full_key", how="inner")
-        print(f"  ✓ Full mammograms: {len(full_matched)}")
+        print(f"  Full mammograms: {len(full_matched)}")
         
-        # Cropped images
-        crop_imgs = jpeg_df[jpeg_df["SeriesDescription"]=="cropped images"].copy()
-        ann_crop = ann[["crop_key", "label"]].dropna().drop_duplicates()
-        crop_matched = crop_imgs.merge(ann_crop, left_on="pid_norm", right_on="crop_key", how="inner")
-        print(f"  ✓ Cropped images: {len(crop_matched)}")
+        combined = full_matched.drop_duplicates(subset=['jpg_path'])
         
-        # Combine
-        combined = pd.concat([full_matched, crop_matched], ignore_index=True)
-        combined = combined.drop_duplicates(subset=['jpg_path'])
-        
-        print("\n" + "="*70)
-        print(f"COMBINED: {len(combined)} IMAGES")
-        print("="*70)
-        print(f"Benign: {(combined['label']==0).sum()}, Malignant: {(combined['label']==1).sum()}")
+        print(f"\nTotal images: {len(combined)} (Benign: {(combined['label']==0).sum()}, Malignant: {(combined['label']==1).sum()})")
         
         return combined
     
     @staticmethod
     def create_splits(df):
         """Create patient-level train/val/test splits"""
-        print("\nCreating patient-level splits...")
+        print("\nCreating splits...")
         
-        # Extract patient ID
         df["patient"] = df["PatientID"].str.extract(r'(P_\d{5})')[0].fillna(df["PatientID"])
         
-        # Patient-level split
         patients = df.groupby("patient")["label"].max().reset_index()
         
         train_ids, tmp_ids = train_test_split(
@@ -407,44 +373,67 @@ class EnhancedDataPreprocessor:
     @staticmethod
     def run_enhanced_preprocessing():
         """Run enhanced preprocessing to create 3000+ image dataset"""
-        print("\n" + "#"*70)
-        print("CBIS-DDSM ENHANCED PREPROCESSING")
-        print("#"*70)
+        print("\nCBIS-DDSM Enhanced Preprocessing")
         
-        # Check if enhanced data directory exists
         if not os.path.exists(CSV_DIR_ENHANCED) or not os.path.exists(JPEG_DIR_ENHANCED):
             print(f"\nError: Enhanced dataset directory not found at {BASE_ENHANCED}")
             print("Please ensure the full CBIS-DDSM dataset is available.")
             return False
         
-        # Load and match
         combined = EnhancedDataPreprocessor.load_and_match()
         
-        # Create splits
         train, val, test = EnhancedDataPreprocessor.create_splits(combined)
         
-        # Save
         train.to_csv(os.path.join(OUTPUT_DIR_ENHANCED, "train_enhanced.csv"), index=False)
         val.to_csv(os.path.join(OUTPUT_DIR_ENHANCED, "val_enhanced.csv"), index=False)
         test.to_csv(os.path.join(OUTPUT_DIR_ENHANCED, "test_enhanced.csv"), index=False)
         
-        print(f"\n✓ Saved to: {OUTPUT_DIR_ENHANCED}")
-        print(f"\nDATASET INCREASED FROM 110 TO {len(combined)} IMAGES!")
-        print("#"*70 + "\n")
+        print(f"\nDataset created: {len(combined)} images (increased from 110)")
+        print(f"Saved to: {OUTPUT_DIR_ENHANCED}")
         
         return True
 
 
-class CBISDDSMDataset(Dataset):
-    """Custom PyTorch Dataset for CBIS-DDSM images"""
+def apply_clahe_and_negative(image_np, target_size=(224, 224)):
+    """
+    Apply CLAHE and Negative Transformation (from notebooks)
+    Optimized for mammogram mass detection
     
-    def __init__(self, csv_path, transform=None, image_size=224):
+    Args:
+        image_np: numpy array (H, W, 3) in RGB format
+        target_size: tuple (height, width) for resizing
+    
+    Returns:
+        PIL Image with CLAHE and negative transformation applied
+    """
+    image = cv2.resize(image_np, (target_size[1], target_size[0]))
+    
+    image_lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    l_channel, a_channel, b_channel = cv2.split(image_lab)
+    
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    l_channel = clahe.apply(l_channel)
+    
+    image_lab = cv2.merge((l_channel, a_channel, b_channel))
+    
+    image = cv2.cvtColor(image_lab, cv2.COLOR_LAB2RGB)
+    
+    image = 255 - image
+    
+    return Image.fromarray(image.astype(np.uint8))
+
+
+class CBISDDSMDataset(Dataset):
+    """Custom PyTorch Dataset for CBIS-DDSM images with CLAHE + Negative preprocessing"""
+    
+    def __init__(self, csv_path, transform=None, image_size=224, use_clahe=True):
         self.df = pd.read_csv(csv_path)
         self.transform = transform
         self.image_size = image_size
+        self.use_clahe = use_clahe
+        
         if self.transform is None:
             self.transform = transforms.Compose([
-                transforms.Resize((image_size, image_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                    std=[0.229, 0.224, 0.225])
@@ -456,67 +445,119 @@ class CBISDDSMDataset(Dataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         
-        # Load image
         img_path = row['jpg_path']
-        image = Image.open(img_path).convert('RGB')
         
-        # Apply transforms
+        if self.use_clahe:
+            image_np = np.array(Image.open(img_path).convert('RGB'))
+            image = apply_clahe_and_negative(image_np, target_size=(self.image_size, self.image_size))
+        else:
+            image = Image.open(img_path).convert('RGB')
+            image = image.resize((self.image_size, self.image_size))
+        
         if self.transform:
             image = self.transform(image)
         
-        # Get label
         label = torch.tensor(row['label'], dtype=torch.long)
         
         return image, label
 
 
-def get_data_transforms(image_size=224):
-    # Training with data augmentation
-    train_transform = transforms.Compose([
-        transforms.Resize((image_size, image_size)),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomVerticalFlip(p=0.3),
-        transforms.RandomRotation(degrees=15),
-        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
-        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2),
-        transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                           std=[0.229, 0.224, 0.225])
-    ])
-    
-    # Validation and test (no augmentation)
-    val_transform = transforms.Compose([
-        transforms.Resize((image_size, image_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                           std=[0.229, 0.224, 0.225])
-    ])
+def get_data_transforms(image_size=224, use_clahe=True):
+    """
+    Get data transforms for training and validation.
+    Note: Resizing is handled in apply_clahe_and_negative() when use_clahe=True
+    """
+    if use_clahe:
+        train_transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.3),
+            transforms.RandomRotation(degrees=15),
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225])
+        ])
+        
+        val_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225])
+        ])
+    else:
+        train_transform = transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.3),
+            transforms.RandomRotation(degrees=15),
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2),
+            transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225])
+        ])
+        
+        val_transform = transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225])
+        ])
     
     return train_transform, val_transform
 
 
-def create_data_loaders(output_dir, batch_size=32, image_size=224, num_workers=4):
+def create_data_loaders(output_dir, batch_size=32, image_size=224, num_workers=4, use_clahe=True):
+    """
+    Create PyTorch DataLoaders with optional CLAHE + Negative preprocessing.
+    
+    Args:
+        output_dir: Directory containing preprocessed CSV files
+        batch_size: Batch size for DataLoader
+        image_size: Target image size (height, width)
+        num_workers: Number of workers for data loading
+        use_clahe: If True, applies CLAHE + Negative transformation (like notebooks)
+    """
     print("\nCreating data loaders...")
     
-    train_transform, val_transform = get_data_transforms(image_size)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    enhanced_dir = os.path.join(script_dir, "preprocessed_data_enhanced")
+    
+    if os.path.exists(os.path.join(enhanced_dir, "train_enhanced.csv")):
+        print("  Using ENHANCED dataset (full mammograms, MASS + CALC CASES)")
+        if use_clahe:
+            print("  Applying CLAHE + Negative Transformation")
+        train_csv = os.path.join(enhanced_dir, "train_enhanced.csv")
+        val_csv = os.path.join(enhanced_dir, "val_enhanced.csv")
+        test_csv = os.path.join(enhanced_dir, "test_enhanced.csv")
+    else:
+        print("  Using standard dataset")
+        train_csv = os.path.join(output_dir, "train_cleaned.csv")
+        val_csv = os.path.join(output_dir, "val_cleaned.csv")
+        test_csv = os.path.join(output_dir, "test_cleaned.csv")
+    
+    train_transform, val_transform = get_data_transforms(image_size, use_clahe=use_clahe)
     
     train_dataset = CBISDDSMDataset(
-        csv_path=os.path.join(output_dir, "train_cleaned.csv"),
+        csv_path=train_csv,
         transform=train_transform,
-        image_size=image_size
+        image_size=image_size,
+        use_clahe=use_clahe
     )
     
     val_dataset = CBISDDSMDataset(
-        csv_path=os.path.join(output_dir, "val_cleaned.csv"),
+        csv_path=val_csv,
         transform=val_transform,
-        image_size=image_size
+        image_size=image_size,
+        use_clahe=use_clahe
     )
     
     test_dataset = CBISDDSMDataset(
-        csv_path=os.path.join(output_dir, "test_cleaned.csv"),
+        csv_path=test_csv,
         transform=val_transform,
-        image_size=image_size
+        image_size=image_size,
+        use_clahe=use_clahe
     )
     
     train_loader = DataLoader(
@@ -550,11 +591,7 @@ def create_data_loaders(output_dir, batch_size=32, image_size=224, num_workers=4
 
 def main():
     print("\nCBIS-DDSM Data Preprocessing")
-    print("-" * 40)
-    
-    # Run enhanced preprocessing by default (3000+ images)
-    print("\nRunning Enhanced Preprocessing (3000+ images)...")
-    print("="*70)
+    print("Running enhanced preprocessing (MASS + CALC cases)...")
     
     success = EnhancedDataPreprocessor.run_enhanced_preprocessing()
     
@@ -563,14 +600,9 @@ def main():
         print("Please ensure the full CBIS-DDSM dataset is available.")
         return
     
-    print("\n" + "="*70)
-    print("Preprocessing complete!")
-    print("="*70)
+    print("\nPreprocessing complete!")
     print(f"Output: {OUTPUT_DIR_ENHANCED}")
-    print(f"\nDataset files created:")
-    print(f"  - train_enhanced.csv")
-    print(f"  - val_enhanced.csv")
-    print(f"  - test_enhanced.csv")
+    print("Files: train_enhanced.csv, val_enhanced.csv, test_enhanced.csv")
 
 
 if __name__ == "__main__":

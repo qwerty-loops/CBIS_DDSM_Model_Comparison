@@ -5,44 +5,41 @@ Models Compared:
   1. ConvNeXt
   2. DenseNet121
   3. Swin Transformer
-  4. Swin Multi-View
-  5. SparseWin Transformer
-  6. ResNet18
-  7. ResNet50
-  8. EfficientNet-B0
-  9. U-Net
-  10. Custom CNN
+  4. SparseWin Transformer
+  5. ResNet18
+  6. ResNet50
+  7. EfficientNet-B0
+  8. U-Net
 
 Dataset: CBIS-DDSM Breast Cancer Mammography
 Task: Binary Classification (Benign vs Malignant)
 
 Performance Comparison:
 ----------------------------------------------------------------------------------------------------
-Metric              ConvNeXt            DenseNet121         Swin Transformer    Swin Multi-View     SparseWin TransformerResNet18            ResNet50            EfficientNet-B0     U-Net               Custom CNN          
+Metric              ConvNeXt            DenseNet121         Swin Transformer    SparseWin TransformerResNet18            ResNet50            EfficientNet-B0     U-Net               
 ----------------------------------------------------------------------------------------------------
-Accuracy            0.6803              0.6757              0.6893              0.6417              0.6576              0.6576              0.6893              0.6757              0.6100              0.6168              
-Precision           0.6306              0.6489              0.6615              0.6073              0.6165              0.5960              0.6615              0.6609              0.5570              0.5721              
-Recall              0.7035              0.6131              0.6382              0.5829              0.6382              0.7487              0.6382              0.5779              0.6633              0.5980              
-F1                  0.6651              0.6305              0.6496              0.5949              0.6272              0.6637              0.6496              0.6166              0.6055              0.5848              
-ROC_AUC             0.7417              0.7443              0.7588              0.7152              0.7380              0.7534              0.7475              0.7396              0.6214              0.6565              
-PR_AUC              0.7184              0.7073              0.7415              0.6828              0.7310              0.7229              0.7119              0.7326              0.5317              0.5686              
-MCC                 0.3629              0.3425              0.3709              0.2742              0.3109              0.3328              0.3709              0.3401              0.2290              0.2295              
+Accuracy            0.5678              0.6757              0.6780              0.6576              0.6576              0.6893              0.6757              0.6100              
+Precision           0.6750              0.6489              0.7041              0.6165              0.5960              0.6615              0.6609              0.5570              
+Recall              0.2328              0.6131              0.5948              0.6382              0.7487              0.6382              0.5779              0.6633              
+F1                  0.3462              0.6305              0.6449              0.6272              0.6637              0.6496              0.6166              0.6055              
+ROC_AUC             0.6096              0.7443              0.7708              0.7380              0.7534              0.7475              0.7396              0.6214              
+PR_AUC              0.6073              0.7073              0.7624              0.7310              0.7229              0.7119              0.7326              0.5317              
 ----------------------------------------------------------------------------------------------------
 
 Summary & Recommendations:
 ------------------------------
-Best Overall (F1 Score): ConvNeXt (0.6651)
-Best Discriminator (ROC AUC): Swin Transformer (0.7588)
+Best Overall (F1 Score): ResNet18 (0.6637)
+Best Discriminator (ROC AUC): Swin Transformer (0.7708)
 Best Sensitivity (Recall): ResNet18 (0.7487)
 
 Detailed Analysis:
-1. ConvNeXt is the top performing model.
-   - F1 Score: 0.6651
-   - ROC AUC: 0.7417
-   - Recall: 0.7035
-
-2. ResNet18 is the runner-up.
+1. ResNet18 is the top performing model.
    - F1 Score: 0.6637
+   - ROC AUC: 0.7534
+   - Recall: 0.7487
+
+2. ResNet50 is the runner-up.
+   - F1 Score: 0.6496
 
 Conclusion:
-ConvNeXt shows the best balance of precision and recall, while Swin Transformer has the best overall discriminative ability. For medical screening, high sensitivity (Recall) is crucial to avoid missing malignant cases. ResNet18 achieves the best sensitivity of 0.7487.
+ResNet18 shows the best balance of precision and recall, while Swin Transformer has the best overall discriminative ability. For medical screening, high sensitivity (Recall) is crucial to avoid missing malignant cases. ResNet18 achieves the best sensitivity of 0.7487.

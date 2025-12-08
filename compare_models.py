@@ -23,13 +23,11 @@ MODELS = {
     'ConvNeXt': 'convnext',
     'DenseNet121': 'densenet121',
     'Swin Transformer': 'swin_transformer',
-    'Swin Multi-View': 'swin_transformer_multiview',
     'SparseWin Transformer': 'sparsewin_transformer',
     'ResNet18': 'resnet18',
     'ResNet50': 'resnet50',
     'EfficientNet-B0': 'efficientnet',
-    'U-Net': 'unet',
-    'Custom CNN': 'custom_cnn'
+    'U-Net': 'unet'
 }
 
 
@@ -134,7 +132,7 @@ def print_comparison_table(df):
 def create_all_models_bar_chart(all_metrics, output_path):
     """Create grouped bar chart comparing all models"""
     
-    metrics_to_plot = ['Accuracy', 'Precision', 'Recall', 'F1', 'ROC_AUC', 'PR_AUC', 'MCC']
+    metrics_to_plot = ['Accuracy', 'Precision', 'Recall', 'F1', 'ROC_AUC', 'PR_AUC']
     labels = [m.replace('_', ' ') for m in metrics_to_plot]
     
     model_names = list(all_metrics.keys())
@@ -177,7 +175,7 @@ def create_all_models_bar_chart(all_metrics, output_path):
 def create_metrics_bar_chart(convnext_metrics, densenet_metrics, output_path):
     """Create grouped bar chart comparing metrics (legacy function)"""
     
-    metrics_to_plot = ['Accuracy', 'Precision', 'Recall', 'F1', 'ROC_AUC', 'PR_AUC', 'Sensitivity_TPR', 'Specificity_TNR', 'MCC']
+    metrics_to_plot = ['Accuracy', 'Precision', 'Recall', 'F1', 'ROC_AUC', 'PR_AUC', 'Sensitivity_TPR', 'Specificity_TNR']
     
     convnext_values = [convnext_metrics[m] for m in metrics_to_plot]
     densenet_values = [densenet_metrics[m] for m in metrics_to_plot]
@@ -310,7 +308,7 @@ def create_summary_report(all_metrics):
     
     # Get all metric names from first model
     first_model = list(all_metrics.keys())[0]
-    metric_names = ['Accuracy', 'Precision', 'Recall', 'F1', 'ROC_AUC', 'PR_AUC', 'MCC']
+    metric_names = ['Accuracy', 'Precision', 'Recall', 'F1', 'ROC_AUC', 'PR_AUC']
     
     with open(report_path, 'w') as f:
         f.write("CBIS-DDSM Model Comparison Report\n")
