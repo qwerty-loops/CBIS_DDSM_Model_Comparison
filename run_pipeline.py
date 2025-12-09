@@ -11,7 +11,7 @@ STEPS = [
     ("DenseNet121 Training", "densenet121_model.py"),
     ("ResNet18 Training", "resnet18_model.py"),
     ("ResNet50 Training", "resnet50_model.py"),
-    # ("Swin Transformer Training", "swin_transformer_model.py"),
+    ("Swin Transformer Training", "swin_transformer_model.py"),
     ("SparseWin Transformer Training", "sparsewin_transformer_model.py"),
     ("EfficientNet-B0 Training", "efficientnet_model.py"),
     ("U-Net Training", "unet_model.py"),
@@ -30,7 +30,7 @@ def run_pipeline():
             continue
             
         print(f"STEP: {description}")
-        print(f"Script: {script_name}")
+        print(f"Script: {script_name}") 
         
         step_start = time.time()
         try:

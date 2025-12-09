@@ -267,10 +267,19 @@ class EnhancedDataPreprocessor:
     Includes both MASS and CALCIFICATION cases"""
     
     @staticmethod
-    def norm_key(s):
-        """Normalize for matching"""
-        s = str(s).strip().replace("–","-").replace("—","-")
-        return re.sub(r'\s+','', re.sub(r'[_-]+', lambda m: m.group()[0], s)).upper()
+    def extract_series_uid(path):
+        """Extract SeriesInstanceUID from annotation file path
+        
+        Example path: 'Mass-Training_P_00001_LEFT_CC/[StudyUID]/[SeriesUID]/000000.dcm'
+        Path structure: [FolderName]/[StudyInstanceUID]/[SeriesInstanceUID]/[filename]
+        Returns: SeriesInstanceUID (the third part, index 2)
+        """
+        if pd.isna(path) or not isinstance(path, str):
+            return None
+        parts = path.split('/')
+        if len(parts) >= 3:
+            return parts[2]  # SeriesInstanceUID is the THIRD part (index 2)
+        return None
     
     @staticmethod
     def load_and_match():
@@ -300,10 +309,15 @@ class EnhancedDataPreprocessor:
         patho_map = {"MALIGNANT":1, "BENIGN":0, "BENIGN_WITHOUT_CALLBACK":0}
         ann["label"] = ann["pathology"].astype(str).str.upper().map(patho_map)
         
-        ann["full_key"] = ann["image_file_path"].apply(lambda s: str(s).split("/")[0] if "/" in str(s) else "").apply(EnhancedDataPreprocessor.norm_key)
-        ann["crop_key"] = ann["cropped_image_file_path"].apply(lambda s: str(s).split("/")[0] if "/" in str(s) else "").apply(EnhancedDataPreprocessor.norm_key)
+        # Extract SeriesInstanceUID from annotation paths (like notebook approach)
+        ann["full_series_uid"] = ann["image_file_path"].apply(EnhancedDataPreprocessor.extract_series_uid)
+        ann["crop_series_uid"] = ann["cropped_image_file_path"].apply(EnhancedDataPreprocessor.extract_series_uid)
         
         print(f"\nTotal annotations: {len(ann)}")
+        
+        # Debug: Show sample extracted UIDs
+        sample_uids = ann["full_series_uid"].dropna().head(3).tolist()
+        print(f"Sample extracted UIDs: {sample_uids[:1] if sample_uids else 'None'}")
         
         print("Scanning JPEG files...")
         rows = []
@@ -322,22 +336,39 @@ class EnhancedDataPreprocessor:
         meta["SeriesInstanceUID"] = meta["SeriesInstanceUID"].astype(str)
         jpeg_df = jpeg_df.merge(meta[["SeriesInstanceUID","SeriesDescription"]], on="SeriesInstanceUID", how="left")
         
+        # Keep PatientID for reference but don't use for matching
         if "PatientID" in dinfo.columns:
             dinfo_clean = dinfo[["SeriesInstanceUID", "PatientID"]].drop_duplicates()
             jpeg_df = jpeg_df.merge(dinfo_clean, on="SeriesInstanceUID", how="left")
-        
-        jpeg_df["pid_norm"] = jpeg_df["PatientID"].astype(str).apply(EnhancedDataPreprocessor.norm_key)
         
         print("Image types:")
         for t, c in jpeg_df["SeriesDescription"].value_counts().items():
             print(f"  {t}: {c}")
         
-        print("Matching images with labels...")
+        print("Matching images with labels by SeriesInstanceUID...")
         
+        # Filter for full mammogram images
         full_imgs = jpeg_df[jpeg_df["SeriesDescription"]=="full mammogram images"].copy()
-        ann_full = ann[["full_key", "label"]].dropna().drop_duplicates()
-        full_matched = full_imgs.merge(ann_full, left_on="pid_norm", right_on="full_key", how="inner")
-        print(f"  Full mammograms: {len(full_matched)}")
+        print(f"  Full mammogram images available: {len(full_imgs)}")
+        
+        # Prepare annotation data with SeriesInstanceUID and labels
+        ann_full = ann[["full_series_uid", "label", "patient_id"]].dropna(subset=["full_series_uid"]).drop_duplicates(subset=["full_series_uid"])
+        print(f"  Annotations with valid UIDs: {len(ann_full)}")
+        
+        # Debug: Check if any UIDs match
+        jpeg_uids = set(full_imgs["SeriesInstanceUID"].unique())
+        ann_uids = set(ann_full["full_series_uid"].unique())
+        common_uids = jpeg_uids.intersection(ann_uids)
+        print(f"  Common UIDs found: {len(common_uids)}")
+        
+        if len(common_uids) == 0:
+            print("\n⚠ WARNING: No matching UIDs found!")
+            print(f"  Sample JPEG UID: {list(jpeg_uids)[:1]}")
+            print(f"  Sample Ann UID:  {list(ann_uids)[:1]}")
+        
+        # Match by SeriesInstanceUID (like the notebook)
+        full_matched = full_imgs.merge(ann_full, left_on="SeriesInstanceUID", right_on="full_series_uid", how="inner")
+        print(f"  Full mammograms matched: {len(full_matched)}")
         
         combined = full_matched.drop_duplicates(subset=['jpg_path'])
         

@@ -1,40 +1,23 @@
 # CBIS-DDSM Breast Cancer Classification
 
-This project builds and compares several deep learning models for binary classification of mammography images from the CBIS-DDSM (Curated Breast Imaging Subset of DDSM) dataset. The goal is to classify each image as:
+This project compares deep learning models for binary classification of mammography images from the CBIS-DDSM dataset.
 
-- 0 – Benign
-- 1 – Malignant
-
-The code handles data preprocessing, training, evaluation, visualization, and model comparison.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Requirements](#requirements)
-- [Project Structure](#project-structure)
-- [Dataset](#dataset)
-- [Quick Start](#quick-start)
-- [Step-by-Step Usage](#step-by-step-usage)
-- [Models](#models)
-- [Model Comparison](#model-comparison)
-- [Evaluation Metrics](#evaluation-metrics)
-- [Class Imbalance: What Was Fixed](#class-imbalance-what-was-fixed)
-- [Visualizations](#visualizations)
-- [Tips and Troubleshooting](#tips-and-troubleshooting)
----
+**Task:** Classify mammograms as Benign (0) or Malignant (1)
 
 ## Overview
 
-The project currently supports six models:
+The project includes 8 models trained on 3,103 full mammogram images with corrected SeriesInstanceUID-based matching:
 
 1. ConvNeXt-Tiny
-2. DenseNet121
+2. DenseNet121  
 3. ResNet18
 4. ResNet50
 5. Swin Transformer
-6. EfficientNet-B0
+6. SparseWin Transformer
+7. EfficientNet-B0
+8. U-Net (adapted for classification)
 
-All models share the same preprocessing pipeline, training loop style, metrics, and output structure. A separate comparison script summarizes and visualizes how they perform side by side.
+All models use the same enhanced preprocessing pipeline with CLAHE and negative transformation, consistent training procedures, and comprehensive evaluation metrics.
 
 ---
 
@@ -72,85 +55,89 @@ If you have a CUDA-capable GPU, install the matching PyTorch build from the offi
 ## Project Structure
 
 ```
-CBIS_DDSM_CNN/
+CBIS_DDSM_Model_Comparison/
 │
-├── data_preprocessing.py          # Data preprocessing and cleaning
+├── data_preprocessing.py          # Enhanced preprocessing with corrected matching
 ├── convnext_model.py              # ConvNeXt model
 ├── densenet121_model.py           # DenseNet121 model
 ├── resnet18_model.py              # ResNet18 model
 ├── resnet50_model.py              # ResNet50 model
 ├── swin_transformer_model.py      # Swin Transformer
+├── sparsewin_transformer_model.py # SparseWin Transformer
 ├── efficientnet_model.py          # EfficientNet-B0 model
-├── unet_model.py                  # U-Net model (adapted for classification)
-├── compare_models.py              # Model comparison and plots
-├── README.md                      # Main documentation (this file)
+├── unet_model.py                  # U-Net model
+├── compare_models.py              # Model comparison
+├── visualize_all_confusion_matrices.py  # Confusion matrix grid visualization
+├── run_pipeline.py                # Automated training pipeline
 │
-├── preprocessed_data/             # Output from preprocessing (created automatically)
-│   ├── train_cleaned.csv
-│   ├── val_cleaned.csv
-│   ├── test_cleaned.csv
-│   └── preprocessing_summary.txt
+├── preprocessed_data_enhanced/    # Enhanced dataset (3,103 images)
+│   ├── train_enhanced.csv         # 2,165 images
+│   ├── val_enhanced.csv           # 467 images
+│   └── test_enhanced.csv          # 471 images
 │
-├── models/                        # Trained model weights (created automatically)
-│   ├── convnext_best.pth
-│   ├── densenet121_best.pth
-│   ├── resnet18_best.pth
-│   ├── resnet50_best.pth
-│   ├── swin_transformer_best.pth
-│   ├── efficientnet_best.pth
-│   └── unet_best.pth
+├── models/                        # Trained model weights
+│   └── [model_name]_best.pth
 │
-└── results/                       # Evaluation results (created automatically)
+└── results/                       # Evaluation results
     ├── convnext/
     ├── densenet121/
     ├── resnet18/
     ├── resnet50/
     ├── swin_transformer/
+    ├── sparsewin_transformer/
     ├── efficientnet/
     ├── unet/
-    └── comparison/                # Cross-model comparison tables and plots
+    └── comparison/                # Comparison visualizations
+        ├── all_models_comparison.csv
+        ├── all_confusion_matrices.png
+        ├── metrics_bar_chart.png
+        ├── roc_comparison.png
+        └── pr_comparison.png
 ```
 
 ---
 
 ## Dataset
 
-- Source: CBIS-DDSM (Curated Breast Imaging Subset of DDSM)
-- Location on disk (in this project):  
-  `D:\Allen Archive\Allen Archives\NEU_academics\Semester4\ML\Project\CBIS_DDSM`
+**Source:** CBIS-DDSM (Curated Breast Imaging Subset of DDSM)
 
-Main pieces you need:
+**Enhanced Dataset:**
+- 3,103 full mammogram images (MASS + CALCIFICATION cases)
+- Matched using SeriesInstanceUID (corrected from previous PatientID matching)
+- Train: 2,165 | Val: 467 | Test: 471
+- Class distribution: Benign (56%) / Malignant (44%)
 
-- `split_train.csv`, `split_val.csv`, `split_test.csv` – metadata and labels
-- Image folders (JPEG/PNG) referenced by those CSVs
-
-Classes:
-
-- Class 0: Benign
-- Class 1: Malignant
+**Preprocessing:**
+- CLAHE (Contrast Limited Adaptive Histogram Equalization)
+- Negative transformation for mammography
+- Data augmentation (flips, rotations, color jitter)
+- Resize to 224×224
 
 ---
 
 ## Quick Start
 
-1. Run preprocessing (once):
+1. **Preprocessing** (creates enhanced dataset):
    ```bash
    python data_preprocessing.py
    ```
-2. Train one or more models, for example:
+
+2. **Train models** (individually or use pipeline):
    ```bash
-   python convnext_model.py
-   python densenet121_model.py
-   python resnet18_model.py
-   python resnet50_model.py
+   # Individual
    python swin_transformer_model.py
-   python efficientnet_model.py
+   
+   # Or run all models automatically
+   python run_pipeline.py
    ```
-3. Run the comparison script:
+
+3. **Compare results**:
    ```bash
    python compare_models.py
+   python visualize_all_confusion_matrices.py
    ```
-4. Open the outputs in `results/` and `results/comparison/` to inspect metrics and plots.
+
+4. Check `results/comparison/` for visualizations and metrics.
 
 ---
 
@@ -158,51 +145,48 @@ Classes:
 
 ### 1. Preprocessing
 
-Script: `data_preprocessing.py`
+**Script:** `data_preprocessing.py`
 
 ```bash
 python data_preprocessing.py
 ```
 
-What it does:
+**What it does:**
+- Loads MASS and CALCIFICATION annotations from CBIS-DDSM
+- Matches images using SeriesInstanceUID (corrected approach)
+- Scans 10,237 JPEG files and filters for full mammograms
+- Creates train/val/test splits (70/15/15)
+- Applies CLAHE preprocessing and negative transformation
 
-- Loads train, validation, and test CSV files
-- Checks for missing values
-- Verifies that image paths exist
-- Checks a sample of images for corruption
-- Removes duplicate image entries
-- Prints class distributions
-- Saves cleaned CSVs
-- Writes a short summary report
+**Output:** `preprocessed_data_enhanced/`
+- `train_enhanced.csv` (2,165 images)
+- `val_enhanced.csv` (467 images)  
+- `test_enhanced.csv` (471 images)
 
-Outputs in `preprocessed_data/`:
+### 2. Training Models
 
-- `train_cleaned.csv`
-- `val_cleaned.csv`
-- `test_cleaned.csv`
-- `preprocessing_summary.txt`
-
-### 2. Training and Evaluation – Models
-
-All model scripts share the same basic configuration:
-
+**Configuration:**
 - Image size: 224×224
-- Batch size: 16
-- Epochs: 30
+- Batch size: 16-32 (model dependent)
+- Max epochs: 30
 - Learning rate: 1e-4
-- Optimizer: AdamW
+- Optimizer: AdamW (weight_decay: 0.05)
 - Loss: CrossEntropyLoss with class weights
 - Scheduler: ReduceLROnPlateau
+- Early stopping: patience=7
 
-Each script:
+**Anti-overfitting measures:**
+- Dropout (0.3-0.5 depending on model)
+- Strong weight decay (0.05)
+- Early stopping
+- Data augmentation
 
-- Trains on the training set
-- Monitors validation loss
-- Saves the best model weights
-- Evaluates on the test set
-- Computes a full set of metrics
-- Saves predictions for comparison
-- Produces several plots
+**Each model:**
+- Loads from `preprocessed_data_enhanced/`
+- Trains with validation monitoring
+- Saves best weights to `models/`
+- Evaluates on test set
+- Saves metrics and visualizations to `results/[model_name]/`
 
 Run any of the following:
 
@@ -305,13 +289,16 @@ Output:
 
 ## Models
 
-Short description of each model:
-
-- **ConvNeXt-Tiny** – Modern CNN architecture inspired by Vision Transformers, but purely convolutional.
-- **DenseNet121** – CNN with dense connections; good feature reuse and strong gradients.
-- **ResNet18 / ResNet50** – Classic residual networks; stable and widely used baselines.
-- **Swin Transformer** – Vision Transformer with shifted windows, good at capturing both local and global patterns.
-- **EfficientNet-B0** – Efficient architecture using compound scaling; balances depth, width, and resolution for optimal performance.
+| Model | Type | Parameters | ROC AUC | Notes |
+|-------|------|------------|---------|-------|
+| **Swin Transformer** | Transformer | 28M | 0.824 | Best overall performance |
+| **SparseWin Transformer** | Transformer | 28M | 0.822 | Sparse attention variant |
+| **DenseNet121** | CNN | 8M | 0.817 | Dense connections |
+| **ConvNeXt-Tiny** | CNN | 28M | 0.807 | Modern CNN design |
+| **ResNet50** | CNN | 25M | 0.805 | Deep residual network |
+| **ResNet18** | CNN | 11M | 0.795 | Lightweight baseline |
+| **EfficientNet-B0** | CNN | 5M | 0.769 | Efficient scaling |
+| **U-Net** | Encoder-Decoder | 31M | 0.621 | Adapted from segmentation |
 
 ---
 
@@ -465,42 +452,33 @@ train_transform = transforms.Compose([
 
 ---
 
-## 📚 References
+## Key Improvements
 
-1. **CBIS-DDSM Dataset:** [https://wiki.cancerimagingarchive.net/display/Public/CBIS-DDSM](https://wiki.cancerimagingarchive.net/display/Public/CBIS-DDSM)
+**Corrected Image-Label Matching:**
+- Fixed SeriesInstanceUID extraction (was using position [1], now uses [2])
+- Matches 3,103 images (up from 110 with old approach)
+- Verified against reference notebook implementation
 
-2. **ConvNeXt Paper:** Liu, Z., et al. (2022). "A ConvNet for the 2020s." CVPR 2022.
+**Enhanced Preprocessing:**
+- CLAHE for contrast enhancement
+- Negative transformation for mammography
+- Proper train/val/test splits
 
-3. **DenseNet Paper:** Huang, G., et al. (2017). "Densely Connected Convolutional Networks." CVPR 2017.
+**Anti-Overfitting:**
+- Dropout layers (0.3-0.5)
+- Strong weight decay (0.05)
+- Early stopping (patience=7)
+- Data augmentation
 
-4. **EfficientNet Paper:** Tan, M., & Le, Q. (2019). "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks." ICML 2019.
+## Results Summary
 
-5. **U-Net Paper:** Ronneberger, O., et al. (2015). "U-Net: Convolutional Networks for Biomedical Image Segmentation." MICCAI 2015.
+All 8 models achieve similar performance (ROC AUC 0.77-0.82), with transformers slightly outperforming CNNs. The close performance suggests the dataset difficulty ceiling has been reached with current approaches.
+
+**Best Model:** Swin Transformer (ROC AUC: 0.824, F1: 0.723)
 
 ---
-
-## 📝 Notes
-
-- All output directories are created automatically
-- Models are saved only when validation loss improves
-- All metrics are computed on the test set using the best model checkpoint
-- Preprocessing needs to be run only once unless data changes
-- Most models use transfer learning with ImageNet pretrained weights (except U-Net which trains from scratch)
-
----
-
-## ✅ Checklist
-
-Before running the models, ensure:
-
-- [ ] Dataset is properly organized in the specified directory
-- [ ] Python 3.8+ is installed
-- [ ] All required packages are installed
-- [ ] There is enough disk space for models and results (~500MB)
-- [ ] GPU available (optional but recommended)
-- [ ] Preprocessing script has been run successfully
-
 
 **Project:** CBIS-DDSM Breast Cancer Classification  
-**Models:** ConvNeXt-Tiny, DenseNet121, ResNet18, ResNet50, Swin Transformer, EfficientNet-B0  
+**Dataset:** 3,103 full mammogram images  
+**Models:** 8 architectures (CNNs + Transformers)  
 **Task:** Binary classification (Benign vs Malignant)

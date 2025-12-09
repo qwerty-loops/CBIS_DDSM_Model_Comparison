@@ -18,8 +18,8 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
-# Import preprocessing modules
-from data_preprocessing import create_data_loaders, OUTPUT_DIR
+# Import preprocessing modules (ENHANCED VERSION with corrected matching)
+from data_preprocessing import create_data_loaders, OUTPUT_DIR_ENHANCED
 
 
 # Configuration
@@ -57,9 +57,12 @@ class EfficientNetClassifier(nn.Module):
         else:
             self.model = models.efficientnet_b0(weights=None)
         
-        # Modify final classifier layer for binary classification
+        # Modify final classifier layer for binary classification with dropout
         in_features = self.model.classifier[1].in_features
-        self.model.classifier[1] = nn.Linear(in_features, num_classes)
+        self.model.classifier = nn.Sequential(
+            nn.Dropout(p=0.3),  # Add dropout before final layer
+            nn.Linear(in_features, num_classes)
+        )
         
     def forward(self, x):
         return self.model(x)
@@ -178,14 +181,14 @@ class Trainer:
         
         class_weights = self._calculate_class_weights()
         self.criterion = nn.CrossEntropyLoss(weight=class_weights)
-        self.optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+        self.optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=0.05)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, mode='min', patience=5, factor=0.5
         )
         self.train_losses = []; self.val_losses = []
         self.train_accs = []; self.val_accs = []
         self.best_val_loss = float('inf')
-        self.early_stop_patience = 10
+        self.early_stop_patience = 7
         self.epochs_without_improvement = 0
     
     def _calculate_class_weights(self):
@@ -289,10 +292,10 @@ def save_metrics_to_csv(metrics, output_path):
 
 def main():
     print(f"\n{MODEL_NAME} Model Training")
-    print("-" * 40)
-    
+    print("\nLoading preprocessed data (ENHANCED with corrected matching)...")
     train_loader, val_loader, test_loader = create_data_loaders(
-        OUTPUT_DIR, batch_size=BATCH_SIZE, image_size=IMAGE_SIZE, num_workers=4
+        output_dir=OUTPUT_DIR_ENHANCED,
+        batch_size=BATCH_SIZE, image_size=IMAGE_SIZE, num_workers=4
     )
     
     print(f"\nInitializing {MODEL_NAME} model...")

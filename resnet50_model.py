@@ -18,8 +18,8 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
-# Import preprocessing modules
-from data_preprocessing import create_data_loaders, OUTPUT_DIR
+# Import preprocessing modules (ENHANCED VERSION with corrected matching)
+from data_preprocessing import create_data_loaders, OUTPUT_DIR_ENHANCED
 
 
 # Configuration
@@ -278,10 +278,10 @@ def save_metrics_to_csv(metrics, output_path):
 
 def main():
     print(f"\n{MODEL_NAME} Model Training")
-    print("-" * 40)
-    
+    print("\nLoading preprocessed data (ENHANCED with corrected matching)...")
     train_loader, val_loader, test_loader = create_data_loaders(
-        OUTPUT_DIR, batch_size=BATCH_SIZE, image_size=IMAGE_SIZE, num_workers=4
+        output_dir=OUTPUT_DIR_ENHANCED,
+        batch_size=BATCH_SIZE, image_size=IMAGE_SIZE, num_workers=4
     )
     
     print(f"\nInitializing {MODEL_NAME} model...")

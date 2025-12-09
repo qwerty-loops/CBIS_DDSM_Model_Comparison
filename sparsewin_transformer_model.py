@@ -27,8 +27,8 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
-# Import preprocessing modules
-from data_preprocessing import create_data_loaders, OUTPUT_DIR
+# Import preprocessing modules (ENHANCED VERSION with corrected matching)
+from data_preprocessing import create_data_loaders, OUTPUT_DIR_ENHANCED
 
 # Configuration
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -524,10 +524,10 @@ def main():
     print("-" * 40)
     print("Features: Sparse Multi-Token Attention + Efficient Attention Patterns")
     
-    # Create data loaders
-    print("\nLoading preprocessed data...")
+    # Create data loaders (LEAKY VERSION)
+    print("\nLoading preprocessed data (ENHANCED with corrected matching)...")
     train_loader, val_loader, test_loader = create_data_loaders(
-        OUTPUT_DIR,
+        output_dir=OUTPUT_DIR_ENHANCED,
         batch_size=BATCH_SIZE,
         image_size=IMAGE_SIZE,
         num_workers=4  # Parallel data loading for faster training
